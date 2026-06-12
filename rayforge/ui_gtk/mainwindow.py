@@ -39,6 +39,7 @@ from .actions import (
     ActionManager,
     action_extension_registry,
 )
+from .icons import get_icon
 from .canvas import CanvasElement
 from .canvas2d.drag_drop_cmd import DragDropCmd
 from .canvas2d.elements.stock import StockElement
@@ -57,6 +58,7 @@ from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
 from .settings.settings_dialog import SettingsWindow
 from .shared.gtk import get_monitor_geometry
+from .shared.keyboard import format_shortcut_for_display
 from .shared.playback_overlay import PlaybackOverlay
 from .shared.progress_bar import ProgressBar
 from .shared.sanity_check_dialog import SanityCheckDialog
@@ -112,10 +114,31 @@ dropdown.machine-dropdown button {
     padding-top: 2px;
     padding-bottom: 2px;
 }
+
+.titlebar-shortcut {
+    font-size: 10px;
+    color: alpha(@headerbar_fg_color, 0.8);
+    margin-top: 0;
+    padding-top: 0;
+    font-weight: bold;
+}
+
+headerbar button {
+    min-height: 0;
+    padding: 4px;
+}
 """
 
 
-class MainWindow(Adw.ApplicationWindow):
+import sys
+
+if sys.platform == "darwin":
+    BaseWindow = Gtk.ApplicationWindow
+else:
+    BaseWindow = Adw.ApplicationWindow
+
+
+class MainWindow(BaseWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title(const.APP_NAME)
@@ -129,7 +152,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         # The ToastOverlay will wrap the main content box
         self.toast_overlay = Adw.ToastOverlay()
-        self.set_content(self.toast_overlay)
+        if sys.platform == "darwin":
+            self.set_child(self.toast_overlay)
+        else:
+            self.set_content(self.toast_overlay)
         # Track active toasts so they can be cleared programmatically
         self._active_toasts: List[Adw.Toast] = []
 
@@ -171,15 +197,8 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.set_default_size(1100, 800)
 
-        # HeaderBar with left-aligned menu and centered title
-        self.header_bar = Adw.HeaderBar()
-        vbox.append(self.header_bar)
-
-        # Create the menu model and the popover menubar
+        # Create the menu model
         self.menu_model = MainMenu()
-        self.menubar = Gtk.PopoverMenuBar.new_from_model(self.menu_model)
-        self.menubar.add_css_class("in-header-menubar")
-        self.header_bar.pack_start(self.menubar)
 
         # Set up Recent Files manager
         self.recent_manager = Gtk.RecentManager.get_default()
@@ -188,15 +207,30 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self.project_cmd.update_recent_files_menu()
 
-        # Create and set the centered title widget
-        window_title = Adw.WindowTitle(
-            title=self.get_title() or "", subtitle=__version__ or ""
-        )
-        self.header_bar.set_title_widget(window_title)
-
-        # Add machine selector to the header bar (right side)
         self.machine_selector = MachineDropdown()
-        self.header_bar.pack_end(self.machine_selector)
+
+        if sys.platform == "darwin":
+            # Create a custom titlebar with essential action buttons.
+            # (The menu model is set later, after shortcuts are registered,
+            #  so that GTK can associate accelerators with native NSMenuItems.)
+            self._create_macos_titlebar(vbox)
+        else:
+            # HeaderBar with left-aligned menu and centered title
+            self.header_bar = Adw.HeaderBar()
+            vbox.append(self.header_bar)
+
+            self.menubar = Gtk.PopoverMenuBar.new_from_model(self.menu_model)
+            self.menubar.add_css_class("in-header-menubar")
+            self.header_bar.pack_start(self.menubar)
+
+            # Create and set the centered title widget
+            window_title = Adw.WindowTitle(
+                title=self.get_title() or "", subtitle=__version__ or ""
+            )
+            self.header_bar.set_title_widget(window_title)
+
+            # Add machine selector to the header bar (right side)
+            self.header_bar.pack_end(self.machine_selector)
 
         # Create a vertical paned for main content and bottom control panel
         self.vertical_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
@@ -236,6 +270,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar = MainToolbar()
         self._connect_toolbar_signals()
         main_ui_box.append(self.toolbar)
+
+        # On macOS, machine selector is in the titlebar now
 
         # Create an overlay so the right panel can float above the canvas.
         self._canvas_overlay = Gtk.Overlay()
@@ -287,6 +323,9 @@ class MainWindow(Adw.ApplicationWindow):
         shortcut_controller = Gtk.ShortcutController()
         self.action_manager.register_shortcuts(shortcut_controller)
         self.add_controller(shortcut_controller)
+
+        if sys.platform == "darwin":
+            self.get_application().set_menubar(self.menu_model)
 
         # Connect document signals
         doc = self.doc_editor.doc
@@ -537,6 +576,65 @@ class MainWindow(Adw.ApplicationWindow):
         # Trigger the non-blocking check for app version updates
         self.app_update_checker.check_on_startup()
 
+    def _create_macos_titlebar(self, vbox):
+        titlebar = Gtk.HeaderBar()
+        titlebar.set_show_title_buttons(True)
+
+        button_box = Gtk.Box(spacing=6)
+        button_box.set_margin_start(12)
+        button_box.set_margin_end(12)
+
+        groups = [
+            [
+                ("new", "new-symbolic"),
+                ("open", "open-symbolic"),
+                ("save", "save-symbolic"),
+            ],
+            [
+                ("undo", "undo-symbolic"),
+                ("redo", "redo-symbolic"),
+            ],
+        ]
+
+        for i, group in enumerate(groups):
+            if i > 0:
+                sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+                button_box.append(sep)
+
+            for action_name, icon_name in group:
+                full_action = f"win.{action_name}"
+                shortcut = SHORTCUTS.get(full_action, "")
+                display_shortcut = format_shortcut_for_display(shortcut)
+
+                button = Gtk.Button()
+                button.set_action_name(full_action)
+
+                content_box = Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL, spacing=0
+                )
+                content_box.append(get_icon(icon_name))
+
+                if display_shortcut:
+                    shortcut_label = Gtk.Label()
+                    shortcut_label.set_label(display_shortcut)
+                    shortcut_label.get_style_context().add_class(
+                        "titlebar-shortcut"
+                    )
+                    shortcut_label.set_margin_top(2)
+                    content_box.append(shortcut_label)
+
+                button.set_child(content_box)
+                button_box.append(button)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        button_box.append(sep)
+
+        button_box.append(self.machine_selector)
+
+        titlebar.pack_end(button_box)
+        self.set_titlebar(titlebar)
+        vbox.append(titlebar)
+
     def _on_click_to_zero_mode_changed(self, sender, *, active: bool):
         """Handle click-to-zero mode toggle from control panel."""
         self.surface.set_click_to_zero_mode(active)
@@ -685,6 +783,13 @@ class MainWindow(Adw.ApplicationWindow):
         if self._saved_bottom_panel_visible:
             self.bottom_panel.set_visible(True)
         self.main_stack.set_visible_child_name("main")
+
+    def set_menubar_model(self, model):
+        """Set the menu model, handling platform differences."""
+        if sys.platform == "darwin":
+            self.get_application().set_menubar(model)
+        else:
+            self.menubar.set_menu_model(model)
 
     def on_add_child(self, sender):
         """Handler for adding a new stock item."""

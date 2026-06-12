@@ -1,4 +1,5 @@
 import logging
+import sys
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, cast
 
@@ -659,6 +660,11 @@ class ActionManager:
             )
             controller.add_shortcut(shortcut)
 
+            if sys.platform == "darwin":
+                app = self.win.get_application()
+                if app:
+                    app.set_accels_for_action(action_name, [shortcut_str])
+
         self._shortcut_controller = controller
         self._update_dynamic_shortcuts()
 
@@ -685,6 +691,13 @@ class ActionManager:
                 )
                 self._shortcut_controller.add_shortcut(shortcut)
                 self._layout_shortcuts.append(shortcut)
+
+                if sys.platform == "darwin":
+                    app = self.win.get_application()
+                    if app:
+                        app.set_accels_for_action(
+                            f"win.{info.action_name}", [info.shortcut]
+                        )
 
     def get_action(self, name: str) -> Gio.SimpleAction:
         """Retrieves a registered action by its name."""

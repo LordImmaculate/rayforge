@@ -67,7 +67,7 @@ class SketchModeCmd:
             self._win.open_modal_page("sketch")
             get_usage_tracker().track_page_view("/sketcher", "Sketch Editor")
 
-            self._win.menubar.set_menu_model(sketch_studio.menu_model)
+            self._win.set_menubar_model(sketch_studio.menu_model)
             self._win.insert_action_group("sketch", sketch_studio.action_group)
             self._win.add_controller(sketch_studio.shortcut_controller)
         except Exception as e:
@@ -78,7 +78,7 @@ class SketchModeCmd:
     def exit_sketch_mode(self):
         """Returns to the main 2D/3D view from the SketchStudio."""
         sketch_studio = _get_sketch_studio()
-        self._win.menubar.set_menu_model(self._win.menu_model)
+        self._win.set_menubar_model(self._win.menu_model)
         self._win.insert_action_group("sketch", None)
         if sketch_studio:
             self._win.remove_controller(sketch_studio.shortcut_controller)
@@ -101,7 +101,7 @@ class SketchModeCmd:
             self._win.open_modal_page("sketch")
             get_usage_tracker().track_page_view("/sketcher", "Sketch Editor")
 
-            self._win.menubar.set_menu_model(sketch_studio.menu_model)
+            self._win.set_menubar_model(sketch_studio.menu_model)
             self._win.insert_action_group("sketch", sketch_studio.action_group)
             self._win.add_controller(sketch_studio.shortcut_controller)
         except Exception as e:

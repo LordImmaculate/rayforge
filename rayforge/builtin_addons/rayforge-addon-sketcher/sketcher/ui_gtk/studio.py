@@ -1,4 +1,5 @@
 import logging
+import sys
 from gettext import gettext as _
 
 from blinker import Signal
@@ -326,6 +327,11 @@ class SketchStudio(Gtk.Box):
                     Gtk.NamedAction.new(action_name),
                 )
                 self.shortcut_controller.add_shortcut(shortcut)
+
+            if sys.platform == "darwin":
+                app = self.parent_window.get_application()
+                if app:
+                    app.set_accels_for_action(action_name, accels)
 
     def set_sketch(self, sketch: Sketch):
         """Loads a sketch model into the studio."""

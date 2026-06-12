@@ -6,6 +6,8 @@ from gi.repository import Gdk, Gtk
 
 from .action_registry import action_registry
 from .icons import get_icon
+from .shared.keyboard import format_shortcut_for_display
+from .actions import SHORTCUTS
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
 from .sim3d import initialized as canvas3d_initialized
@@ -33,27 +35,37 @@ class MainToolbar(Gtk.Box):
 
         # File related buttons (open, save, import, export)
         self.open_button = Gtk.Button(child=get_icon("open-symbolic"))
-        self.open_button.set_tooltip_text(_("Open Project"))
+        self._set_tooltip_with_shortcut(
+            self.open_button, _("Open Project"), "win.open"
+        )
         self.open_button.set_action_name("win.open")
         self.append(self.open_button)
 
         self.save_button = Gtk.Button(child=get_icon("save-symbolic"))
-        self.save_button.set_tooltip_text(_("Save"))
+        self._set_tooltip_with_shortcut(
+            self.save_button, _("Save"), "win.save"
+        )
         self.save_button.set_action_name("win.save")
         self.append(self.save_button)
 
         self.save_as_button = Gtk.Button(child=get_icon("save-as-symbolic"))
-        self.save_as_button.set_tooltip_text(_("Save As..."))
+        self._set_tooltip_with_shortcut(
+            self.save_as_button, _("Save As..."), "win.save-as"
+        )
         self.save_as_button.set_action_name("win.save-as")
         self.append(self.save_as_button)
 
         open_button = Gtk.Button(child=get_icon("download-symbolic"))
-        open_button.set_tooltip_text(_("Import image"))
+        self._set_tooltip_with_shortcut(
+            open_button, _("Import image"), "win.import"
+        )
         open_button.set_action_name("win.import")
         self.append(open_button)
 
         self.export_button = Gtk.Button(child=get_icon("export-symbolic"))
-        self.export_button.set_tooltip_text(_("Generate G-code"))
+        self._set_tooltip_with_shortcut(
+            self.export_button, _("Generate G-code"), "win.export"
+        )
         self.export_button.set_action_name("win.export")
         self.append(self.export_button)
 
@@ -62,12 +74,16 @@ class MainToolbar(Gtk.Box):
         self.append(sep)
 
         self.undo_button = UndoButton()
-        self.undo_button.set_tooltip_text(_("Undo"))
+        self._set_tooltip_with_shortcut(
+            self.undo_button, _("Undo"), "win.undo"
+        )
         self.undo_button.set_action_name("win.undo")
         self.append(self.undo_button)
 
         self.redo_button = RedoButton()
-        self.redo_button.set_tooltip_text(_("Redo"))
+        self._set_tooltip_with_shortcut(
+            self.redo_button, _("Redo"), "win.redo"
+        )
         self.redo_button.set_action_name("win.redo")
         self.append(self.redo_button)
 
@@ -80,7 +96,9 @@ class MainToolbar(Gtk.Box):
                 _("3D view disabled (missing dependencies like PyOpenGL)")
             )
         else:
-            view_3d_button.set_tooltip_text(_("Show 3D Preview"))
+            self._set_tooltip_with_shortcut(
+                view_3d_button, _("Show 3D Preview"), "win.show_3d_view"
+            )
         self.append(view_3d_button)
 
         self.recalculate_button = Gtk.Button(
@@ -103,7 +121,9 @@ class MainToolbar(Gtk.Box):
         self.bottom_panel_button = Gtk.ToggleButton()
         self.bottom_panel_button.set_child(get_icon("jog-symbolic"))
         self.bottom_panel_button.set_active(False)
-        self.bottom_panel_button.set_tooltip_text(_("Toggle bottom panel"))
+        self._set_tooltip_with_shortcut(
+            self.bottom_panel_button, _("Toggle bottom panel"), "win.toggle_bottom_panel"
+        )
         self.bottom_panel_button.set_action_name("win.toggle_bottom_panel")
         self.append(self.bottom_panel_button)
 
@@ -140,19 +160,23 @@ class MainToolbar(Gtk.Box):
         self.append(sep)
 
         self.home_button = Gtk.Button(child=get_icon("home-symbolic"))
-        self.home_button.set_tooltip_text(_("Home the machine"))
+        self._set_tooltip_with_shortcut(
+            self.home_button, _("Home the machine"), "win.machine-home"
+        )
         self.home_button.set_action_name("win.machine-home")
         self.append(self.home_button)
 
         self.frame_button = Gtk.Button(child=get_icon("frame-symbolic"))
-        self.frame_button.set_tooltip_text(
-            _("Cycle laser head around the occupied area")
+        self._set_tooltip_with_shortcut(
+            self.frame_button, _("Cycle laser head around the occupied area"), "win.machine-frame"
         )
         self.frame_button.set_action_name("win.machine-frame")
         self.append(self.frame_button)
 
         self.send_button = Gtk.Button(child=get_icon("send-symbolic"))
-        self.send_button.set_tooltip_text(_("Send to machine"))
+        self._set_tooltip_with_shortcut(
+            self.send_button, _("Send to machine"), "win.machine-send"
+        )
         self.send_button.set_action_name("win.machine-send")
         self.append(self.send_button)
 
@@ -160,20 +184,24 @@ class MainToolbar(Gtk.Box):
         self.hold_off_icon = get_icon("pause-symbolic")
         self.hold_button = Gtk.ToggleButton()
         self.hold_button.set_child(self.hold_off_icon)
-        self.hold_button.set_tooltip_text(_("Pause machine"))
+        self._set_tooltip_with_shortcut(
+            self.hold_button, _("Pause machine"), "win.machine-hold"
+        )
         self.hold_button.set_action_name("win.machine-hold")
         self.append(self.hold_button)
 
         self.cancel_button = Gtk.Button(child=get_icon("stop-symbolic"))
-        self.cancel_button.set_tooltip_text(_("Cancel running job"))
+        self._set_tooltip_with_shortcut(
+            self.cancel_button, _("Cancel running job"), "win.machine-cancel"
+        )
         self.cancel_button.set_action_name("win.machine-cancel")
         self.append(self.cancel_button)
 
         self.clear_alarm_button = Gtk.Button(
             child=get_icon("clear-alarm-symbolic")
         )
-        self.clear_alarm_button.set_tooltip_text(
-            _("Clear machine alarm (unlock)")
+        self._set_tooltip_with_shortcut(
+            self.clear_alarm_button, _("Clear machine alarm (unlock)"), "win.machine-clear-alarm"
         )
         self.clear_alarm_button.set_action_name("win.machine-clear-alarm")
         self.append(self.clear_alarm_button)
@@ -182,7 +210,9 @@ class MainToolbar(Gtk.Box):
         self.focus_off_icon = get_icon("laser-off-symbolic")
         self.focus_button = Gtk.ToggleButton()
         self.focus_button.set_child(self.focus_on_icon)
-        self.focus_button.set_tooltip_text(_("Toggle focus laser"))
+        self._set_tooltip_with_shortcut(
+            self.focus_button, _("Toggle focus laser"), "win.toggle-focus"
+        )
         self.focus_button.set_action_name("win.toggle-focus")
         self.focus_button.connect("toggled", self._on_focus_toggled)
         self.append(self.focus_button)
@@ -291,3 +321,16 @@ class MainToolbar(Gtk.Box):
         """
         self.warning_label.set_label(f"{error_title} ({error_code})")
         self.machine_warning_box.set_tooltip_text(error_description)
+
+    def _tooltip_with_shortcut(self, text, action_name):
+        """Return tooltip text with keyboard shortcut appended if available."""
+        shortcut_str = SHORTCUTS.get(action_name)
+        if shortcut_str:
+            display = format_shortcut_for_display(shortcut_str)
+            if display:
+                return f"{text} ({display})"
+        return text
+
+    def _set_tooltip_with_shortcut(self, button, text, action_name):
+        """Set a button's tooltip, appending the keyboard shortcut if available."""
+        button.set_tooltip_text(self._tooltip_with_shortcut(text, action_name))

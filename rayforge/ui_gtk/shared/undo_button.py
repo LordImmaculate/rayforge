@@ -46,6 +46,10 @@ class _HistoryButton(Gtk.Box):
         """Sets the Gio.Action for the main button."""
         self.main_button.set_action_name(action_name)
 
+    def set_main_tooltip_text(self, text: str):
+        """Sets the tooltip text for the main action button."""
+        self.main_button.set_tooltip_text(text)
+
     def set_history_manager(self, manager: HistoryManager):
         """Connects the button to a HistoryManager instance."""
         if self.manager:

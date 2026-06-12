@@ -101,6 +101,9 @@ for arg in "$@"; do
         --skip-*)
             SKIP_DEPS+=("${arg#--skip-}")
             ;;
+        --run)
+            RUN_APP=1
+            ;;
         *)
             echo "Unknown option: $arg" >&2
             exit 1
@@ -110,6 +113,8 @@ done
 
 if (( INSTALL == 1 )); then
     INSTALL=1
+elif (( RUN_APP == 1 )); then
+    RUN_APP=1
 else
     echo ""
     print_info "======================================"
