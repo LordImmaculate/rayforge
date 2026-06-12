@@ -3,6 +3,7 @@ from typing import Dict, Tuple, cast
 
 from gi.repository import Adw, Gtk
 
+from ..dialog import show_platform_dialog
 from ...machine.models.machine import Machine
 from ...machine.models.macro import Macro, MacroTrigger
 from ..icons import get_icon
@@ -104,8 +105,8 @@ class HookList(Adw.PreferencesGroup):
         parent = cast(Gtk.Window, self.get_ancestor(Gtk.Window))
         hook_name = trigger.label()
 
-        dialog = Adw.MessageDialog(
-            transient_for=parent,
+        show_platform_dialog(
+            parent_window=parent,
             heading=_("Reset '{hook_name}' to Default?").format(
                 hook_name=hook_name
             ),
@@ -114,19 +115,17 @@ class HookList(Adw.PreferencesGroup):
                 "The machine will revert to using its built-in default "
                 "macro. This action cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "reset", "label": _("Reset"), "is_destructive": True},
+            ],
+            callback=lambda response_id: self._on_reset_response(
+                response_id, trigger
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("reset", _("Reset"))
-        dialog.set_response_appearance(
-            "reset", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.set_default_response("cancel")
-        dialog.connect("response", self._on_reset_response, trigger)
-        dialog.present()
 
     def _on_reset_response(
         self,
-        dialog: Adw.MessageDialog,
         response_id: str,
         trigger: MacroTrigger,
     ):

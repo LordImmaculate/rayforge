@@ -3,6 +3,7 @@ from typing import Optional, cast
 
 from gi.repository import Adw, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...machine.device.profile import DeviceProfile
 from ...machine.models.machine import Machine
@@ -166,34 +167,28 @@ class MachineSettingsPage(TrackedPreferencesPage):
 
     def _on_delete_machine_clicked(self, button, machine: Machine):
         """Shows a confirmation dialog before deleting a machine."""
-        dialog = Adw.MessageDialog(
-            transient_for=cast(
+        show_platform_dialog(
+            parent_window=cast(
                 Optional[Gtk.Window], self.get_ancestor(Gtk.Window)
             ),
-            modal=True,
-            heading=_("Delete ‘{name}’?").format(name=machine.name),
+            heading=_("Delete \u2018{name}\u2019?").format(name=machine.name),
             body=_(
                 "This machine profile and all its settings will be "
                 "permanently removed. This action cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "delete", "label": _("Delete"), "is_destructive": True},
+            ],
+            callback=lambda response_id: self._on_delete_confirm_response(
+                response_id, machine
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.set_default_response("cancel")
 
-        dialog.connect("response", self._on_delete_confirm_response, machine)
-        dialog.present()
-
-    def _on_delete_confirm_response(
-        self, dialog, response_id: str, machine: Machine
-    ):
+    def _on_delete_confirm_response(self, response_id: str, machine: Machine):
         """Handles the response from the delete confirmation dialog."""
         if response_id == "delete":
             get_context().machine_mgr.remove_machine(machine.id)
-        dialog.close()
 
     def _on_add_machine_clicked(self, button):
         """Shows a dialog to select a machine profile to add."""

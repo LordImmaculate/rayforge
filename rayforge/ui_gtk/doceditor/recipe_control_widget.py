@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 from blinker import Signal
 from gi.repository import Adw, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...core.capability import Capability
 from ...core.recipe import Recipe
@@ -214,29 +215,28 @@ class RecipeControlWidget(Adw.ActionRow):
 
         # Show confirmation dialog
         parent_window = cast(Gtk.Window, self.get_root())
-        dialog = Adw.MessageDialog(
-            transient_for=parent_window,
+        show_platform_dialog(
+            parent_window=parent_window,
             heading=_("Update Recipe '{name}'?").format(name=recipe.name),
             body=_(
                 "This will permanently overwrite the saved recipe with the "
                 "current step settings. This action cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {
+                    "id": "update",
+                    "label": _("Update"),
+                    "is_default": True,
+                },
+            ],
+            callback=lambda response_id: self._on_update_dialog_response(
+                response_id, recipe
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("update", _("Update"))
-        dialog.set_response_appearance(
-            "update", Adw.ResponseAppearance.SUGGESTED
-        )
-        dialog.connect("response", self._on_update_dialog_response, recipe)
-        dialog.present()
 
-    def _on_update_dialog_response(
-        self, dialog: Adw.MessageDialog, response_id: str, recipe: Recipe
-    ):
+    def _on_update_dialog_response(self, response_id: str, recipe: Recipe):
         if response_id == "update":
             recipe.settings = self._get_step_settings()
             get_context().recipe_mgr.save_recipe(recipe)
-            # Manually trigger a UI update, as the step model itself didn't
-            # change
             self._update_ui(self.step)
-        dialog.destroy()

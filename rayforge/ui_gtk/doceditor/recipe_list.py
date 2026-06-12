@@ -3,8 +3,9 @@ from gettext import gettext as _
 from typing import cast
 
 from blinker import Signal
-from gi.repository import Adw, Gtk
+from gi.repository import Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...core.recipe import Recipe
 from ...shared.units.formatter import format_value
@@ -187,8 +188,8 @@ class RecipeListWidget(PreferencesGroupWithButton):
 
     def _on_delete_recipe(self, recipe: Recipe):
         root = self.get_root()
-        dialog = Adw.MessageDialog(
-            transient_for=(
+        show_platform_dialog(
+            parent_window=(
                 cast(Gtk.Window, root)
                 if isinstance(root, Gtk.Window)
                 else None
@@ -198,19 +199,17 @@ class RecipeListWidget(PreferencesGroupWithButton):
                 "The recipe will be permanently removed. "
                 "This action cannot be undone."
             ),
-        )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "delete", "label": _("Delete"), "is_destructive": True},
+            ],
+            callback=lambda response_id: self._on_delete_recipe_response(
+                response_id, recipe
+            ),
         )
 
-        def on_response(d, response_id):
-            if response_id == "delete":
-                get_context().recipe_mgr.delete_recipe(recipe.uid)
-                self.populate_recipes()
-                self.recipes_changed.send(self)
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.present()
+    def _on_delete_recipe_response(self, response_id: str, recipe: Recipe):
+        if response_id == "delete":
+            get_context().recipe_mgr.delete_recipe(recipe.uid)
+            self.populate_recipes()
+            self.recipes_changed.send(self)

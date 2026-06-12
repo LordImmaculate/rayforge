@@ -6,6 +6,7 @@ from typing import Callable, List, Optional, cast
 
 from gi.repository import Adw, GLib, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...license.gumroad_provider import GumroadProvider
 
@@ -110,14 +111,13 @@ class LicenseEntryDialog(Adw.MessageDialog):
         self.close()
 
     def _show_error(self, message: str):
-        error_dialog = Adw.MessageDialog(
-            transient_for=cast(Optional[Gtk.Window], self.get_transient_for()),
-            modal=True,
+        show_platform_dialog(
+            parent_window=cast(Optional[Gtk.Window], self.get_transient_for()),
             heading=_("License Invalid"),
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        error_dialog.add_response("ok", _("OK"))
-        error_dialog.present()
 
 
 class LicenseRequiredDialog(Adw.MessageDialog):

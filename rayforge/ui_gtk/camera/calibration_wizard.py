@@ -12,6 +12,7 @@ except ImportError:
     import fitz as pymupdf
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Graphene, Gtk
 
+from ..dialog import show_platform_dialog
 from ...camera.calibration.calibrator import CameraCalibrator
 from ...camera.calibration.charuco import CharucoBoard
 from ...camera.calibration.result import CalibrationResult
@@ -609,14 +610,13 @@ class CalibrationWizard(PatchedDialogWindow):
         self._show_result_dialog()
 
     def _show_error(self, title: str, message: str):
-        dialog = Adw.MessageDialog(
-            transient_for=self,
-            modal=True,
+        show_platform_dialog(
+            parent_window=self,
             heading=title,
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        dialog.add_response("ok", _("OK"))
-        dialog.present()
 
     def _show_result_dialog(self):
         if self._calibration_result is None:
@@ -624,9 +624,8 @@ class CalibrationWizard(PatchedDialogWindow):
 
         result = self._calibration_result
 
-        dialog = Adw.MessageDialog(
-            transient_for=self,
-            modal=True,
+        show_platform_dialog(
+            parent_window=self,
             heading=_("Calibration Complete"),
             body=_(
                 "RMS Error: {rms:.4f} pixels\n"
@@ -637,18 +636,18 @@ class CalibrationWizard(PatchedDialogWindow):
                 quality=result.quality_rating.title(),
                 frames=result.num_frames_used,
             ),
-        )
-        dialog.add_response("discard", _("Discard"))
-        dialog.add_response("save", _("Save Calibration"))
-        dialog.set_response_appearance(
-            "save", Adw.ResponseAppearance.SUGGESTED
+            buttons=[
+                {"id": "discard", "label": _("Discard")},
+                {
+                    "id": "save",
+                    "label": _("Save Calibration"),
+                    "is_default": True,
+                },
+            ],
+            callback=self._on_result_dialog_response,
         )
 
-        dialog.connect("response", self._on_result_dialog_response)
-        dialog.present()
-
-    def _on_result_dialog_response(self, dialog, response_id):
-        dialog.destroy()
+    def _on_result_dialog_response(self, response_id: str):
         if response_id == "save":
             self._apply_calibration()
         self.close()

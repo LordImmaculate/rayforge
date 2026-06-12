@@ -4,8 +4,9 @@ from gettext import gettext as _
 from typing import Callable, Optional, Tuple, cast
 
 from blinker import Signal
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import GLib, Gtk
 
+from ..dialog import show_platform_dialog
 from ... import __version__
 from ...addon_mgr.addon import Addon, AddonMetadata
 from ...addon_mgr.addon_manager import AddonState
@@ -335,36 +336,47 @@ class AddonListWidget(PreferencesGroupWithButton):
                 missing_str = ", ".join(missing_names)
                 root = cast(Gtk.Window, self.get_root())
 
-                def on_response(dialog, response):
-                    if response == "enable":
-                        success, enabled = am.enable_addon_with_deps(
-                            addon_name
-                        )
-                        if not success:
-                            self._show_error(
-                                _(
-                                    "Failed to enable addon and its "
-                                    "dependencies."
-                                )
-                            )
-                        self.populate_addons()
-                    else:
-                        self.populate_addons()
-                    dialog.close()
-
-                dialog = Adw.MessageDialog(
-                    transient_for=root,
+                show_platform_dialog(
+                    parent_window=root,
                     heading=_("Enable Dependencies?"),
                     body=_(
                         "This addon requires: {deps}\n\nEnable them as well?"
                     ).format(deps=missing_str),
+                    buttons=[
+                        {
+                            "id": "cancel",
+                            "label": _("Cancel"),
+                            "is_cancel": True,
+                        },
+                        {
+                            "id": "enable",
+                            "label": _("Enable All"),
+                            "is_default": True,
+                        },
+                    ],
+                    callback=lambda response_id: self._on_enable_deps_response(
+                        response_id, addon_name
+                    ),
                 )
-                dialog.add_response("cancel", _("Cancel"))
-                dialog.add_response("enable", _("Enable All"))
-                dialog.connect("response", on_response)
-                dialog.present()
                 return
 
+        self._on_toggle_addon_continuation(addon_name, enable)
+
+    def _on_enable_deps_response(self, response: str, addon_name: str):
+        context = get_context()
+        am = context.addon_mgr
+        if response == "enable":
+            success, enabled = am.enable_addon_with_deps(addon_name)
+            if not success:
+                self._show_error(
+                    _("Failed to enable addon and its dependencies.")
+                )
+        self.populate_addons()
+
+    def _on_toggle_addon_continuation(self, addon_name: str, enable: bool):
+        context = get_context()
+        am = context.addon_mgr
+        if enable:
             success = am.enable_addon(addon_name)
             if not success:
                 self._show_error(
@@ -430,27 +442,25 @@ class AddonListWidget(PreferencesGroupWithButton):
         """Confirm and delete the addon."""
         display_name = addon.metadata.display_name or addon.metadata.name
         root = cast(Gtk.Window, self.get_root())
-        dialog = Adw.MessageDialog(
-            transient_for=root,
+        show_platform_dialog(
+            parent_window=root,
             heading=_("Uninstall {name}?").format(name=display_name),
             body=_(
                 "The addon files will be removed. "
                 "Restart recommended to fully clear memory."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {
+                    "id": "delete",
+                    "label": _("Uninstall"),
+                    "is_destructive": True,
+                },
+            ],
+            callback=lambda response_id: (
+                self._delete_addon(addon) if response_id == "delete" else None
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Uninstall"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-
-        def _response_cb(dlg, response):
-            if response == "delete":
-                self._delete_addon(addon)
-            dlg.close()
-
-        dialog.connect("response", _response_cb)
-        dialog.present()
 
     def _delete_addon(self, addon: Addon):
         """Triggers the backend to uninstall the addon."""
@@ -466,28 +476,28 @@ class AddonListWidget(PreferencesGroupWithButton):
             self._show_error(_("Error deleting addon."))
 
     def _show_error(self, message):
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=_("Error"),
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        dialog.add_response("ok", _("OK"))
-        dialog.present()
 
     def _show_info(self, message):
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=_("Info"),
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        dialog.add_response("ok", _("OK"))
-        dialog.present()
 
     def _show_warning(self, heading: str, message: str):
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=heading,
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        dialog.add_response("ok", _("OK"))
-        dialog.present()

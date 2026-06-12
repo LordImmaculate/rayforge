@@ -5,8 +5,9 @@ from gettext import gettext as _
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from gi.repository import Adw, Gio, GLib
+from gi.repository import Gio, GLib
 
+from ..dialog import show_platform_dialog
 from ...core.layer import Layer
 from ...core.source_asset import SourceAsset
 from ...core.vectorization_spec import TraceSpec, VectorizationSpec
@@ -170,7 +171,6 @@ def import_file_at_position(
 
 
 def _on_batch_trace_response(
-    dialog,
     response_id: str,
     editor: "DocEditor",
     file_list: list[tuple[Path, str]],
@@ -238,9 +238,8 @@ def import_multiple_files_at_position(
         file_names += f" and {file_count - 3} more"
 
     # Show batch tracing configuration dialog
-    dialog = Adw.MessageDialog(
-        transient_for=win,
-        modal=True,
+    show_platform_dialog(
+        parent_window=win,
         heading=_("Batch Import {file_count} Images").format(
             file_count=file_count
         ),
@@ -249,21 +248,14 @@ def import_multiple_files_at_position(
             "All images will be traced using the default tracing settings "
             "and positioned at the drop location."
         ).format(file_count=file_count, file_names=file_names),
+        buttons=[
+            {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+            {"id": "import", "label": _("Import All"), "is_default": True},
+        ],
+        callback=lambda response_id: _on_batch_trace_response(
+            response_id, editor, file_list, position_mm, win
+        ),
     )
-    dialog.add_response("cancel", _("Cancel"))
-    dialog.add_response("import", _("Import All"))
-    dialog.set_default_response("import")
-    dialog.set_close_response("cancel")
-
-    dialog.connect(
-        "response",
-        _on_batch_trace_response,
-        editor,
-        file_list,
-        position_mm,
-        win,
-    )
-    dialog.present()
 
     # Hide properties widget
     win.item_revealer.set_reveal_child(False)

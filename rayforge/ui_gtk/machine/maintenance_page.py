@@ -4,6 +4,7 @@ from typing import cast
 
 from gi.repository import Adw, Gtk
 
+from ..dialog import show_platform_dialog
 from ...machine.models.machine import Machine
 from ...machine.models.machine_hours import ResettableCounter
 from ...shared.util.time_format import format_hours_to_hm
@@ -93,20 +94,18 @@ class CounterRow(Gtk.Box):
 
     def _on_reset_clicked(self, button: Gtk.Button):
         """Ask for confirmation, then reset."""
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=_("Reset Counter?"),
             body=_("This will reset the accumulated hours to zero."),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "reset", "label": _("Reset"), "is_destructive": True},
+            ],
+            callback=self._on_reset_response,
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("reset", _("Reset"))
-        dialog.set_response_appearance(
-            "reset", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.connect("response", self._on_reset_response)
-        dialog.present()
 
-    def _on_reset_response(self, dialog: Adw.MessageDialog, response: str):
+    def _on_reset_response(self, response: str):
         """Handle reset confirmation response."""
         if response == "reset":
             self.machine.machine_hours.reset_counter(self.counter.uid)
@@ -127,23 +126,21 @@ class CounterRow(Gtk.Box):
 
     def _on_remove_clicked(self, button: Gtk.Button):
         """Ask for confirmation, then remove."""
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=_("Remove Counter?"),
             body=_(
                 "Are you sure you want to remove this counter? This action "
                 "cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "remove", "label": _("Remove"), "is_destructive": True},
+            ],
+            callback=self._on_remove_response,
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("remove", _("Remove"))
-        dialog.set_response_appearance(
-            "remove", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.connect("response", self._on_remove_response)
-        dialog.present()
 
-    def _on_remove_response(self, dialog: Adw.MessageDialog, response: str):
+    def _on_remove_response(self, response: str):
         """Handle remove confirmation response."""
         if response == "remove":
             self.machine.machine_hours.remove_counter(self.counter.uid)
@@ -392,25 +389,21 @@ class MaintenancePage(TrackedPreferencesPage):
 
     def _on_reset_total_clicked(self, button: Gtk.Button):
         """Ask for confirmation, then reset total hours."""
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, self.get_root()),
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, self.get_root()),
             heading=_("Reset Total Hours?"),
             body=_(
                 "This will reset the total cumulative operating hours to "
                 "zero. Maintenance counters will not be affected."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "reset", "label": _("Reset"), "is_destructive": True},
+            ],
+            callback=self._on_reset_total_response,
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("reset", _("Reset"))
-        dialog.set_response_appearance(
-            "reset", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.connect("response", self._on_reset_total_response)
-        dialog.present()
 
-    def _on_reset_total_response(
-        self, dialog: Adw.MessageDialog, response: str
-    ):
+    def _on_reset_total_response(self, response: str):
         """Handle reset confirmation response for total hours."""
         if response == "reset":
             self.machine.machine_hours.reset_total_hours()

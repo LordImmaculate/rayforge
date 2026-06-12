@@ -1,8 +1,9 @@
 from gettext import gettext as _
 from typing import cast
 
-from gi.repository import Adw, Gtk
+from gi.repository import Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...machine.models.dialect import GcodeDialect
 from ..icons import get_icon
@@ -104,23 +105,21 @@ class DialectRow(Gtk.Box):
 
     def _on_delete_clicked(self, button: Gtk.Button):
         parent = cast(Gtk.Window, self.get_ancestor(Gtk.Window))
-        dialog = Adw.MessageDialog(
-            transient_for=parent,
+        show_platform_dialog(
+            parent_window=parent,
             heading=_("Delete '{label}'?").format(label=self.dialect.label),
             body=_(
                 "This custom dialect will be permanently removed. "
                 "This action cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "delete", "label": _("Delete"), "is_destructive": True},
+            ],
+            callback=self._on_delete_response,
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.connect("response", self._on_delete_response)
-        dialog.present()
 
-    def _on_delete_response(self, dialog: Adw.MessageDialog, response_id: str):
+    def _on_delete_response(self, response_id: str):
         if response_id == "delete":
             machines = get_context().machine_mgr.get_machines()
             machines_using = self.dialect_mgr.get_machines_using_dialect(
@@ -129,17 +128,16 @@ class DialectRow(Gtk.Box):
             if machines_using:
                 machine_names = ", ".join(m.name for m in machines_using)
                 parent = cast(Gtk.Window, self.get_ancestor(Gtk.Window))
-                error_dialog = Adw.MessageDialog(
-                    transient_for=parent,
+                show_platform_dialog(
+                    parent_window=parent,
                     heading=_("Cannot Delete Dialect"),
                     body=_(
                         "This dialect is still used by the following "
                         "machine(s): {machines}"
                     ).format(machines=machine_names),
+                    buttons=[{"id": "ok", "label": _("OK")}],
+                    callback=lambda response_id: None,
                 )
-                error_dialog.add_response("ok", _("OK"))
-                error_dialog.set_default_response("ok")
-                error_dialog.present()
                 return
             self.dialect_mgr.delete_dialect(self.dialect, machines)
 

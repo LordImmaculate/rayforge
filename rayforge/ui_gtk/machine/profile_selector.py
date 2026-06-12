@@ -5,6 +5,7 @@ from typing import Optional
 from blinker import Signal
 from gi.repository import Adw, GLib, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...machine.device.profile import DeviceProfile
 from ..shared.gtk import apply_css
@@ -161,12 +162,10 @@ class MachineProfileSelectorDialog(Adw.MessageDialog):
         self.close()
 
     def _show_import_error(self, message: str):
-        error_dialog = Adw.MessageDialog(
-            transient_for=self,
-            modal=True,
+        show_platform_dialog(
+            parent_window=self,
             heading=_("Import Failed"),
             body=message,
+            buttons=[{"id": "ok", "label": _("OK")}],
+            callback=lambda response_id: None,
         )
-        error_dialog.add_response("ok", _("OK"))
-        error_dialog.set_default_response("ok")
-        error_dialog.present()

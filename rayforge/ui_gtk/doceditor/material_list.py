@@ -6,8 +6,9 @@ from gettext import gettext as _
 from typing import Optional, cast
 
 from blinker import Signal
-from gi.repository import Adw, Gtk
+from gi.repository import Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...core.material import Material, MaterialAppearance
 from ...core.material_library import MaterialLibrary
@@ -163,51 +164,46 @@ class MaterialListWidget(PreferencesGroupWithButton):
         root = self.get_root()
         recipe_mgr = get_context().recipe_mgr
         if recipe_mgr.is_material_in_use(material.uid):
-            err_dialog = Adw.MessageDialog(
-                transient_for=cast(Gtk.Window, root) if root else None,
+            show_platform_dialog(
+                parent_window=cast(Gtk.Window, root) if root else None,
                 heading=_("Cannot Delete Material"),
                 body=_(
                     "This material is currently used by one or more recipes. "
                     "Please remove the recipes that use this material before "
                     "deleting it."
                 ),
+                buttons=[{"id": "ok", "label": _("OK")}],
+                callback=lambda response_id: None,
             )
-            err_dialog.add_response("ok", _("OK"))
-            err_dialog.present()
             return  # Stop the deletion process
 
         # Ask for confirmation
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, root) if root else None,
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, root) if root else None,
             heading=_("Delete '{name}'?").format(name=material.name),
             body=_(
                 "The material will be permanently removed from the library. "
                 "This action cannot be undone."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "delete", "label": _("Delete"), "is_destructive": True},
+            ],
+            callback=lambda response_id: self._on_delete_material_response(
+                response_id, material
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.set_default_response("cancel")
 
-        def on_response(d, response_id):
-            if response_id == "delete":
-                if self._current_library is not None:
-                    if self._current_library.remove_material(material.uid):
-                        self._populate_materials()
-                        self.material_deleted.send(
-                            self, library=self._current_library
-                        )
-                    else:
-                        logger.error(
-                            f"Failed to remove material '{material.uid}'"
-                        )
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.present()
+    def _on_delete_material_response(self, response_id: str, material):
+        if response_id == "delete":
+            if self._current_library is not None:
+                if self._current_library.remove_material(material.uid):
+                    self._populate_materials()
+                    self.material_deleted.send(
+                        self, library=self._current_library
+                    )
+                else:
+                    logger.error(f"Failed to remove material '{material.uid}'")
 
     def _on_edit_material(self, material: Material):
         """Handle material editing."""
@@ -254,13 +250,13 @@ class MaterialListWidget(PreferencesGroupWithButton):
             except Exception as e:
                 logger.error(f"Failed to update material: {e}")
                 root = self.get_root()
-                err_dialog = Adw.MessageDialog(
-                    transient_for=cast(Gtk.Window, root) if root else None,
+                show_platform_dialog(
+                    parent_window=cast(Gtk.Window, root) if root else None,
                     heading=_("Error"),
                     body=_("Failed to update material."),
+                    buttons=[{"id": "ok", "label": _("OK")}],
+                    callback=lambda response_id: None,
                 )
-                err_dialog.add_response("ok", _("OK"))
-                err_dialog.present()
 
     def _on_add_clicked(self, button: Gtk.Button):
         """Handle add material button click."""
@@ -306,10 +302,10 @@ class MaterialListWidget(PreferencesGroupWithButton):
             self.material_added.send(self, library=library)
         else:
             root = self.get_root()
-            err_dialog = Adw.MessageDialog(
-                transient_for=cast(Gtk.Window, root) if root else None,
+            show_platform_dialog(
+                parent_window=cast(Gtk.Window, root) if root else None,
                 heading=_("Error"),
                 body=_("Failed to add material to library."),
+                buttons=[{"id": "ok", "label": _("OK")}],
+                callback=lambda response_id: None,
             )
-            err_dialog.add_response("ok", _("OK"))
-            err_dialog.present()

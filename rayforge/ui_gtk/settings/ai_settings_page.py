@@ -9,6 +9,7 @@ from typing import Optional, cast
 from blinker import Signal
 from gi.repository import Adw, GLib, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ...core.ai.provider import AIProviderConfig, AIProviderType
 from ..icons import get_icon
@@ -247,28 +248,23 @@ class ProviderListWidget(PreferencesGroupWithButton):
 
     def _on_delete_provider(self, provider_id: str, name: str):
         root = self.get_root()
-        dialog = Adw.MessageDialog(
-            transient_for=cast(Gtk.Window, root) if root else None,
+        show_platform_dialog(
+            parent_window=cast(Gtk.Window, root) if root else None,
             heading=_("Delete '{name}'?").format(name=name),
             body=_(
                 "This AI provider will be permanently removed. "
                 "This action cannot be undone."
             ),
-        )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("delete", _("Delete"))
-        dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.set_default_response("cancel")
-
-        def on_response(d, response_id):
-            if response_id == "delete":
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "delete", "label": _("Delete"), "is_destructive": True},
+            ],
+            callback=lambda response_id: (
                 get_context().ai_service.remove_provider(provider_id)
-            d.destroy()
-
-        dialog.connect("response", on_response)
-        dialog.present()
+                if response_id == "delete"
+                else None
+            ),
+        )
 
     def _on_set_default(self, provider_id: str):
         get_context().ai_service.default_provider_id = provider_id

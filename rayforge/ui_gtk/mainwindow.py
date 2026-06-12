@@ -49,7 +49,9 @@ from .doceditor import file_dialogs
 from .doceditor.bottom_panel import BottomPanel
 from .doceditor.import_handler import start_interactive_import
 from .doceditor.item_properties import DocItemPropertiesWidget
-from .doceditor.missing_features_dialog import MissingFeaturesDialog
+from .doceditor.missing_features_dialog import (
+    show_missing_features_dialog,
+)
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
 from .machine.machine_dropdown import MachineDropdown
@@ -1349,8 +1351,7 @@ class MainWindow(BaseWindow):
         # Check for missing producer types and show dialog if needed
         missing_types = new_doc.missing_producer_types
         if missing_types:
-            dialog = MissingFeaturesDialog(self, missing_types)
-            dialog.present()
+            show_missing_features_dialog(self, missing_types)
 
         # Trigger update to sync UI with new document
         self.on_doc_changed(new_doc)

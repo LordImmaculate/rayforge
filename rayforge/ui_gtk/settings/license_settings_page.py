@@ -5,6 +5,7 @@ from typing import Optional, cast
 
 from gi.repository import Adw, GLib, Gtk
 
+from ..dialog import show_platform_dialog
 from ...context import get_context
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -197,37 +198,29 @@ class LicenseSettingsPage(TrackedPreferencesPage):
         self._refresh_ui()
 
     def _on_remove_license(self, btn, product_id):
-        dialog = Adw.MessageDialog(
-            transient_for=cast(
+        show_platform_dialog(
+            parent_window=cast(
                 Optional[Gtk.Window], self.get_ancestor(Gtk.Window)
             ),
-            modal=True,
             heading=_("Remove License?"),
             body=_(
                 "This license key will be removed. You may need to "
                 "re-enter it to use licensed addons."
             ),
+            buttons=[
+                {"id": "cancel", "label": _("Cancel"), "is_cancel": True},
+                {"id": "remove", "label": _("Remove"), "is_destructive": True},
+            ],
+            callback=lambda response_id: self._on_remove_license_response(
+                response_id, product_id
+            ),
         )
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("remove", _("Remove"))
-        dialog.set_response_appearance(
-            "remove", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-        dialog.set_default_response("cancel")
 
-        dialog.connect(
-            "response", self._on_remove_license_response, product_id
-        )
-        dialog.present()
-
-    def _on_remove_license_response(
-        self, dialog, response_id: str, product_id
-    ):
+    def _on_remove_license_response(self, response_id: str, product_id):
         if response_id == "remove":
             validator = get_context().license_validator
             validator.remove_gumroad_license(product_id)
             self._refresh_ui()
-        dialog.close()
 
     def _on_buy_license(self, btn, purchase_url):
         webbrowser.open(purchase_url)
