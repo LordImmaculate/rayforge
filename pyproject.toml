@@ -1,13 +1,11 @@
 [project]
 name = "rayforge"
 dynamic = ["version", "dependencies"]
-authors = [
-  { name="Samuel Abels", email="knipknap@gmail.com" },
-]
+authors = [{ name = "Samuel Abels", email = "knipknap@gmail.com" }]
 description = "A desktop application for laser cutting and engraving"
 readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.10"
+license = { text = "MIT" }
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: POSIX :: Linux",
@@ -23,9 +21,7 @@ classifiers = [
 rayforge = "rayforge.app:main"
 
 [build-system]
-requires = [
-  "setuptools >= 40.9.0", "setuptools-git-versioning"
-]
+requires = ["setuptools >= 40.9.0", "setuptools-git-versioning"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -38,7 +34,7 @@ include = ["rayforge*"]
 enabled = true
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+dependencies = { file = ["requirements.txt"] }
 
 [tool.ruff]
 lint = { ignore = ["E203"] }
@@ -65,14 +61,16 @@ mypy_path = "stubs"
 "share/applications" = ["data/org.rayforge.rayforge.desktop"]
 "share/metainfo" = ["data/org.rayforge.rayforge.metainfo.xml"]
 "share/mime/packages" = ["data/org.rayforge.rayforge.xml"]
-"share/icons/hicolor/scalable/apps" = ["rayforge/resources/icons/org.rayforge.rayforge.svg"]
+"share/icons/hicolor/scalable/apps" = [
+    "rayforge/resources/icons/org.rayforge.rayforge.svg",
+]
 
 [project.optional-dependencies]
 test = [
     "pytest",
     "pytest-asyncio",
     "pytest-mock",
-    "pytest-cov", # Add coverage tool
+    "pytest-cov",      # Add coverage tool
     "pygobject-stubs",
 ]
 

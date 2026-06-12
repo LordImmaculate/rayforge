@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from gi.repository import Adw, Gio, GLib, Gtk
+from rayforge.ui_gtk.dialog import DialogButton, show_platform_dialog
 
 from .. import __version__, const
 from ..context import get_context
@@ -17,6 +18,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+if sys.platform == "darwin":
+    from AppKit import NSAlert, NSAlertStyleWarning
+
 
 class ProjectCmd:
     """Handles project file operations (new, open, save, recent files)."""
@@ -24,39 +28,21 @@ class ProjectCmd:
     def __init__(self, win: "MainWindow", editor: "DocEditor"):
         self._win = win
         self._editor = editor
-
+        
     def show_unsaved_changes_dialog(self, callback: Callable[[str], None]):
-        """
-        Shows a dialog asking the user what to do with unsaved changes.
-        The callback will be called with the response: 'save', 'discard',
-        or 'cancel'.
-        """
-        dialog = Adw.MessageDialog(
-            transient_for=self._win,
+        buttons: list[DialogButton] = [
+            {"id": "save", "label": _("_Save"), "is_default": True},
+            {"id": "cancel", "label": _("_Cancel"), "is_cancel": True},
+            {"id": "discard", "label": _("_Don't Save"), "is_destructive": True},
+        ]
+        
+        show_platform_dialog(
+            parent_window=self._win,
             heading=_("Unsaved Changes"),
-            body=_(
-                "The current project has unsaved changes. "
-                "Do you want to save them?"
-            ),
+            body=_("The current project has unsaved changes. Do you want to save them?"),
+            buttons=buttons,
+            callback=callback
         )
-        dialog.add_response("cancel", _("_Cancel"))
-        dialog.add_response("discard", _("_Don't Save"))
-        dialog.add_response("save", _("_Save"))
-        dialog.set_default_response("save")
-        dialog.set_close_response("cancel")
-        dialog.set_response_appearance(
-            "save", Adw.ResponseAppearance.SUGGESTED
-        )
-        dialog.set_response_appearance(
-            "discard", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-
-        def on_response(d, response_id):
-            d.destroy()
-            callback(response_id)
-
-        dialog.connect("response", on_response)
-        dialog.present()
 
     def on_new_project(self, action, param):
         """Action handler for creating a new project."""

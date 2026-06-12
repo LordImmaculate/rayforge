@@ -24,3 +24,4 @@ svgelements==1.9.6
 trimesh==4.6.8
 vtracer==0.6.11
 websockets==14.2
+pyobjc-framework-Cocoa; sys_platform == 'darwin'
